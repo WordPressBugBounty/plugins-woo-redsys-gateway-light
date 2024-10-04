@@ -2,13 +2,13 @@
 Contributors: j.conti
 Tags: woocommerce, redsys, bizum, Google Pay, GPay
 Requires at least: 4.0
-Tested up to: 6.5
+Tested up to: 6.6
 Donate link: https://plugins.joseconti.com/product-category/plugins/donaciones/
-Stable tag: 6.1.0
+Stable tag: 6.2.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 WC requires at least: 7.5
-WC tested up to: 8.7
+WC tested up to: 9.3
 
 Add Redsys Gateway, BIZUM and Google Pay redirection to WooCommerce. This is the Lite version of the official WooCommerce Redsys plugin at WooCommerce.com.
 
@@ -50,11 +50,11 @@ Check [WooCommerce Redsys Gateway premium version](https://plugins.joseconti.com
 * Preauthorizations, global or product by product.
 * Approve preauthorizations from WooCommerce order
 * Bulk approve Pre-authorizations from Orders List
+* Subscriptions (Woo Subscriptions, Yith Subscriptions premium y SUMO Subscriptions).
 * Bank transfers
 * Direct debits
-* Browser iFrame
+* Pay in a Modal without leaving the site.
 * Always compatible with WooCommerce & Continuous audits by WooCommerce Team.
-* Compatible with WooCommerce Subscriptions
 * WPML compatible.
 * Works with SNI certificates like Let's Encrypt, EX: SiteGround, HostFusion, etc
 * Gateway language selection from settings.
@@ -62,6 +62,7 @@ Check [WooCommerce Redsys Gateway premium version](https://plugins.joseconti.com
 * Tokenization
 * Pay with 1 click
 * Pay with 1 click without leaving the website 
+* Pay with 1 click from product page. 
 * Bulk Charge orders from the Orders List (With Tokens).
 * Direct Debit
 * Private Products
@@ -96,6 +97,15 @@ Check [WooCommerce Redsys Gateway premium version](https://plugins.joseconti.com
 4. Language: Set the Redsys Gateway Language.
 
 == Changelog ==
+
+== 6.2.0 ==
+
+* Fixed a double “Code” tag in Redsys redirection description. https://github.com/joseconti/woo-redsys-gateway-light/issues/22
+* Fixed many Deprecated.
+
+== 6.1.3 ==
+
+* FIX: Refunds in Google Pay redirection.
 
 == 6.1.2 ==
 

@@ -553,7 +553,6 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 	 * @return string
 	 */
 	public function get_redsys_sha256( $user_id ) {
-
 		if ( 'yes' === $this->testmode ) {
 			if ( 'yes' === $this->debug ) {
 				$this->log->add( 'googlepayredirecredsys', ' ' );
@@ -562,11 +561,11 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 				$this->log->add( 'googlepayredirecredsys', '/****************************/' );
 				$this->log->add( 'googlepayredirecredsys', ' ' );
 			}
-			$customtestsha256 = utf8_decode( $this->customtestsha256 );
+			$customtestsha256 = mb_convert_encoding( $this->customtestsha256, 'ISO-8859-1', 'UTF-8' );
 			if ( ! empty( $customtestsha256 ) ) {
 				$sha256 = $customtestsha256;
 			} else {
-				$sha256 = utf8_decode( $this->testsha256 );
+				$sha256 = mb_convert_encoding( $this->testsha256, 'ISO-8859-1', 'UTF-8' );
 			}
 		} else {
 			$user_test = $this->check_user_test_mode( $user_id );
@@ -578,11 +577,11 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 					$this->log->add( 'googlepayredirecredsys', '/****************************/' );
 					$this->log->add( 'googlepayredirecredsys', ' ' );
 				}
-				$customtestsha256 = utf8_decode( $this->customtestsha256 );
+				$customtestsha256 = mb_convert_encoding( $this->customtestsha256, 'ISO-8859-1', 'UTF-8' );
 				if ( ! empty( $customtestsha256 ) ) {
 					$sha256 = $customtestsha256;
 				} else {
-					$sha256 = utf8_decode( $this->testsha256 );
+					$sha256 = mb_convert_encoding( $this->testsha256, 'ISO-8859-1', 'UTF-8' );
 				}
 			} else {
 				if ( 'yes' === $this->debug ) {
@@ -592,7 +591,7 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 					$this->log->add( 'googlepayredirecredsys', '/****************************/' );
 					$this->log->add( 'googlepayredirecredsys', ' ' );
 				}
-				$sha256 = utf8_decode( $this->secretsha256 );
+				$sha256 = mb_convert_encoding( $this->secretsha256, 'ISO-8859-1', 'UTF-8' );
 			}
 		}
 		return $sha256;
@@ -1379,7 +1378,7 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 			$this->log->add( 'googlepayredirecredsys', __( 'DS_MERCHANT_MERCHANTNAME : ', 'woo-redsys-gateway-light' ) . $this->commercename );
 			$this->log->add( 'googlepayredirecredsys', __( 'DS_MERCHANT_AUTHORISATIONCODE : ', 'woo-redsys-gateway-light' ) . $autorization_code );
 			$this->log->add( 'googlepayredirecredsys', __( 'Ds_Merchant_TransactionDate : ', 'woo-redsys-gateway-light' ) . $autorization_date );
-			$this->log->add( 'googlepayredirecredsys', __( 'ask_for_refund Asking por order #: ', 'woo-redsys-gateway-light' ) . $order_id );
+			$this->log->add( 'googlepayredirecredsys', __( 'ask_for_refund Asking for order #: ', 'woo-redsys-gateway-light' ) . $order_id );
 			$this->log->add( 'googlepayredirecredsys', ' ' );
 		}
 
@@ -1451,7 +1450,7 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 		set_time_limit( 0 );
 		$order = wc_get_order( $order_id );
 
-		$transaction_id = WCRedL()->get_redsys_order_number( $order_id );
+		$transaction_id = WCRedL()->get_order_meta( $order_id, '_payment_order_number_redsys', true );
 		if ( 'yes' === $this->debug ) {
 			$this->log->add( 'googlepayredirecredsys', __( '$order_id#: ', 'woo-redsys-gateway-light' ) . $transaction_id );
 		}
@@ -1478,7 +1477,7 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 			do {
 				sleep( 5 );
 				$result = $this->check_redsys_refund( $order_id );
-				$x++;
+				++$x;
 			} while ( $x <= 20 && false === $result );
 			if ( 'yes' === $this->debug && $result ) {
 				$this->log->add( 'googlepayredirecredsys', __( 'check_redsys_refund = true ', 'woo-redsys-gateway-light' ) . $result );

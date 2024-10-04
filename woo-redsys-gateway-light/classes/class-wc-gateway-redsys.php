@@ -18,7 +18,205 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Redsys Payment Gateway class.
  */
 class WC_Gateway_Redsys extends WC_Payment_Gateway {
-	var $notify_url;
+	/**
+	 * $notify_url
+	 *
+	 * @var string
+	 */
+	public $notify_url;
+	/**
+	 * $id
+	 *
+	 * @var string
+	 */
+	public $id;
+	/**
+	 * $icon
+	 *
+	 * @var string
+	 */
+	public $icon;
+	/**
+	 * $has_fields
+	 *
+	 * @var bool
+	 */
+	public $has_fields;
+	/**
+	 * $liveurl
+	 *
+	 * @var string
+	 */
+	public $liveurl;
+	/**
+	 * $testurl
+	 *
+	 * @var string
+	 */
+	public $testurl;
+	/**
+	 * $liveurlws
+	 *
+	 * @var string
+	 */
+	public $liveurlws;
+	/**
+	 * $testurlws
+	 *
+	 * @var string
+	 */
+	public $testurlws;
+	/**
+	 * $testsha256
+	 *
+	 * @var string
+	 */
+	public $testsha256;
+	/**
+	 * $testmode
+	 *
+	 * @var string
+	 */
+	public $testmode;
+	/**
+	 * $method_title
+	 *
+	 * @var string
+	 */
+	public $method_title;
+	/**
+	 * $method_description
+	 *
+	 * @var string
+	 */
+	public $method_description;
+	/**
+	 * $not_use_http
+	 *
+	 * @var string
+	 */
+	public $not_use_https;
+	/**
+	 * $notify_url_not_https
+	 *
+	 * @var string
+	 */
+	public $notify_url_not_https;
+	/**
+	 * $log
+	 *
+	 * @var WC_Logger
+	 */
+	public $log;
+	/**
+	 * $supports
+	 *
+	 * @var array
+	 */
+	public $supports;
+	/**
+	 * $title
+	 *
+	 * @var string
+	 */
+	public $title;
+	/**
+	 * $description
+	 *
+	 * @var string
+	 */
+	public $description;
+	/**
+	 * $customer
+	 *
+	 * @var string
+	 */
+	public $customer;
+	/**
+	 * $commercename
+	 *
+	 * @var string
+	 */
+	public $commercename;
+	/**
+	 * $terminal
+	 *
+	 * @var string
+	 */
+	public $terminal;
+	/**
+	 * $secretsha256
+	 *
+	 * @var string
+	 */
+	public $secretsha256;
+	/**
+	 * $customtestsha256
+	 *
+	 * @var string
+	 */
+	public $customtestsha256;
+	/**
+	 * $redsyslanguage
+	 *
+	 * @var string
+	 */
+	public $redsyslanguage;
+	/**
+	 * $debug
+	 *
+	 * @var string
+	 */
+	public $debug;
+	/**
+	 * $enabled
+	 *
+	 * @var bool
+	 */
+	public $enabled;
+
+	/**
+	 * $hashtype
+	 *
+	 * @var string
+	 */
+	public $hashtype;
+
+	/**
+	 * $lwvactive
+	 *
+	 * @var string
+	 */
+	public $lwvactive;
+
+	/**
+	 * $psd2
+	 *
+	 * @var string
+	 */
+	public $psd2;
+
+	/**
+	 * $orderdo
+	 *
+	 * @var string
+	 */
+	public $orderdo;
+
+	/**
+	 * $secret
+	 *
+	 * @var string
+	 */
+	public $secret;
+
+	/**
+	 * $payoptions
+	 *
+	 * @var string
+	 */
+	public $payoptions;
+
 	/**
 	 * Constructor for the gateway.
 	 *
@@ -81,6 +279,11 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 			$this->enabled = false;
 		}
 	}
+	/**
+	 * Display an admin notice if the PHP mcrypt_encrypt module is not installed.
+	 *
+	 * @return void
+	 */
 	public static function admin_notice_mcrypt_encrypt() {
 		if ( ! function_exists( 'mcrypt_encrypt' ) && ( version_compare( PHP_VERSION, '7.0', '<' ) ) ) {
 			$class   = 'error';
@@ -95,7 +298,7 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 	 *
 	 * @return bool
 	 */
-	function is_valid_for_use() {
+	public function is_valid_for_use() {
 
 		if ( ! in_array( get_woocommerce_currency(), WCRedL()->allowed_currencies(), true ) ) {
 			return false;
@@ -118,7 +321,32 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 			</div>
 			<div class="redsysnotice">
 				<span class="dashicons dashicons-welcome-learn-more redsysnotice-dash"></span>
-				<span class="redsysnotice__content"><?php printf( __( 'check <a href="%1$s" target="_blank" rel="noopener">FAQ page</a> for working problems, or open a <a href="%2$s" target="_blank" rel="noopener">thread on WordPress.org</a> for support. Please, add a <a href="%3$s" target="_blank" rel="noopener">review on WordPress.org</a>', 'woo-redsys-gateway-light' ), 'https://www.joseconti.com/faq-plugin-redsys-woocommerce-com/', 'https://wordpress.org/support/plugin/woo-redsys-gateway-light/', 'https://wordpress.org/support/plugin/woo-redsys-gateway-light/reviews/?rate=5#new-post' ); ?><span>
+				<span class="redsysnotice__content">
+				<?php
+				// Define allowed HTML tags.
+				$allowed_html = array(
+					'a' => array(
+						'href'   => array(),
+						'target' => array(),
+						'rel'    => array(),
+					),
+				);
+
+				// Define the URLs.
+				$faq_url     = esc_url( 'https://plugins.joseconti.com/redsys-for-woocommerce/' );
+				$support_url = esc_url( 'https://wordpress.org/support/plugin/woo-redsys-gateway-light/' );
+				$review_url  = esc_url( 'https://wordpress.org/support/plugin/woo-redsys-gateway-light/reviews/?rate=5#new-post' );
+
+				$raw_html = sprintf(
+					// Translators: %1$s is the FAQ page URL, %2$s is the support thread URL, %3$s is the review URL.
+					__( 'Check <a href="%1$s" target="_blank" rel="noopener">FAQ page</a> for working problems, or open a <a href="%2$s" target="_blank" rel="noopener">thread on WordPress.org</a> for support. Please, add a <a href="%3$s" target="_blank" rel="noopener">review on WordPress.org</a>', 'woo-redsys-gateway-light' ),
+					$faq_url,
+					$support_url,
+					$review_url
+				);
+				echo wp_kses( $raw_html, $allowed_html );
+				?>
+				<span>
 			</div>
 			<p><?php esc_html_e( 'Servired/RedSys works by sending the user to your bank TPV to enter their payment information.', 'woo-redsys-gateway-light' ); ?></p>
 			<?php
@@ -146,7 +374,7 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 	 * @access public
 	 * @return void
 	 */
-	function init_form_fields() {
+	public function init_form_fields() {
 		$this->form_fields = array(
 			'enabled'          => array(
 				'title'   => __( 'Enable/Disable', 'woo-redsys-gateway-light' ),
@@ -288,7 +516,7 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 				'type'        => 'checkbox',
 				'label'       => __( 'Enable logging', 'woo-redsys-gateway-light' ),
 				'default'     => 'no',
-				'description' => __( 'Log Servired/RedSys events, such as notifications requests, inside <code><code>WooCommerce > Status > Logs > redsys-{date}-{number}.log</code></code>', 'woo-redsys-gateway-light' ),
+				'description' => __( 'Log Servired/RedSys events, such as notifications requests, inside <code>WooCommerce > Status > Logs > redsys-{date}-{number}.log</code>', 'woo-redsys-gateway-light' ),
 			),
 		);
 	}
@@ -381,12 +609,10 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 				$this->log->add( 'redsys', ' ' );
 			}
 			$mi_obj->set_parameter( 'DS_MERCHANT_EXCEP_SCA', 'LWV' );
-		} else {
-			if ( 'yes' === $this->debug ) {
-				$this->log->add( 'redsys', ' ' );
-				$this->log->add( 'redsys', 'NOT Using LWV' );
-				$this->log->add( 'redsys', ' ' );
-			}
+		} elseif ( 'yes' === $this->debug ) {
+			$this->log->add( 'redsys', ' ' );
+			$this->log->add( 'redsys', 'NOT Using LWV' );
+			$this->log->add( 'redsys', ' ' );
 		}
 		$mi_obj->set_parameter( 'DS_MERCHANT_MODULE', $merchant_module );
 		if ( ! empty( $this->payoptions ) || ' ' !== $this->payoptions ) {
@@ -414,7 +640,7 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 			'Ds_Signature'          => $signature,
 		);
 		if ( 'yes' === $this->debug ) {
-			$this->log->add( 'redsys', 'Generating payment form for order ' . $order->get_order_number() . '. Sent data: ' . print_r( $redsys_args, true ) );
+			$this->log->add( 'redsys', 'Generating payment form for order ' . $order->get_order_number() . '. Sent data: ' . print_r( $redsys_args, true ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_print_r
 			$this->log->add( 'redsys', 'Helping to understand the encrypted code: ' );
 			$this->log->add( 'redsys', 'DS_MERCHANT_AMOUNT: ' . $order_total_sign );
 			$this->log->add( 'redsys', 'DS_MERCHANT_ORDER: ' . $transaction_id2 );
@@ -545,13 +771,36 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 		);
 	}
 	/**
-	 * Output for the order received page.
+	 * Display the receipt page for the order.
 	 *
-	 * @param object $order order object.
+	 * @param WC_Order $order The order object.
 	 */
 	public function receipt_page( $order ) {
+
+		// Display thank you message.
 		echo '<p>' . esc_html__( 'Thank you for your order, please click the button below to pay with Credit Card via Servired/RedSys.', 'woo-redsys-gateway-light' ) . '</p>';
-		echo $this->generate_redsys_form( $order );
+
+		// Generate and display the Redsys form.
+		$allowed_html = array(
+			'form'  => array(
+				'action' => array(),
+				'method' => array(),
+				'id'     => array(),
+				'target' => array(),
+			),
+			'input' => array(
+				'type'  => array(),
+				'name'  => array(),
+				'value' => array(),
+				'class' => array(),
+				'id'    => array(),
+			),
+			'a'     => array(
+				'class' => array(),
+				'href'  => array(),
+			),
+		);
+		echo wp_kses( $this->generate_redsys_form( $order ), $allowed_html );
 	}
 	/**
 	 * Check redsys IPN validity
@@ -560,7 +809,7 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 		global $woocommerce;
 
 		if ( 'yes' === $this->debug ) {
-			$this->log->add( 'redsys', 'HTTP Notification received: ' . print_r( $_POST, true ) );
+			$this->log->add( 'redsys', 'HTTP Notification received: ' . print_r( $_POST, true ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.PHP.DevelopmentFunctions.error_log_print_r
 		}
 
 		if ( 'yes' === $this->testmode ) {
@@ -576,20 +825,20 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 
 		if ( $usesecretsha256 ) {
 
-			if ( isset( $_POST['Ds_SignatureVersion'] ) ) {
-				$version = sanitize_text_field( $_POST['Ds_SignatureVersion'] );
+			if ( isset( $_POST['Ds_SignatureVersion'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				$version = sanitize_text_field( wp_unslash( $_POST['Ds_SignatureVersion'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			} else {
 				$version = '';
 			}
 
-			if ( isset( $_POST['Ds_MerchantParameters'] ) ) {
-				$data = sanitize_text_field( $_POST['Ds_MerchantParameters'] );
+			if ( isset( $_POST['Ds_MerchantParameters'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				$data = sanitize_text_field( wp_unslash( $_POST['Ds_MerchantParameters'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			} else {
 				$data = '';
 			}
 
-			if ( isset( $_POST['Ds_Signature'] ) ) {
-				$remote_sign = sanitize_text_field( $_POST['Ds_Signature'] );
+			if ( isset( $_POST['Ds_Signature'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
+				$remote_sign = sanitize_text_field( wp_unslash( $_POST['Ds_Signature'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			} else {
 				$remote_sign = '';
 			}
@@ -611,9 +860,9 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 			}
 		} else {
 			if ( 'yes' === $this->debug ) {
-				$this->log->add( 'redsys', 'HTTP Notification received: ' . print_r( $_POST, true ) );
+				$this->log->add( 'redsys', 'HTTP Notification received: ' . print_r( $_POST, true ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.PHP.DevelopmentFunctions.error_log_print_r
 			}
-			if ( $_POST['Ds_MerchantCode'] === $this->customer ) {
+			if ( sanitize_text_field( wp_unslash( $_POST['Ds_MerchantCode'] ) ) === $this->customer ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotValidated
 				if ( 'yes' === $this->debug ) {
 					$this->log->add( 'redsys', 'Received valid notification from Servired/RedSys' );
 				}
@@ -632,8 +881,8 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 	 * @return void
 	 */
 	public function check_ipn_response() {
-		@ob_clean();
-		$post = stripslashes_deep( $_POST );
+		@ob_clean(); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$post = stripslashes_deep( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		if ( $this->check_ipn_request_is_valid() ) {
 			header( 'HTTP/1.1 200 OK' );
 			do_action( 'valid_' . $this->id . '_standard_ipn_request', $post );
@@ -661,9 +910,9 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 			$usesecretsha256 = $this->secretsha256;
 		}
 
-		$version           = sanitize_text_field( $_POST['Ds_SignatureVersion'] );
-		$data              = sanitize_text_field( $_POST['Ds_MerchantParameters'] );
-		$remote_sign       = sanitize_text_field( $_POST['Ds_Signature'] );
+		$version           = sanitize_text_field( wp_unslash( $_POST['Ds_SignatureVersion'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotValidated
+		$data              = sanitize_text_field( wp_unslash( $_POST['Ds_MerchantParameters'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotValidated
+		$remote_sign       = sanitize_text_field( wp_unslash( $_POST['Ds_Signature'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotValidated
 		$mi_obj            = new RedsysAPI();
 		$usesecretsha256   = $this->secretsha256;
 		$dscardnumbercompl = '';
@@ -683,14 +932,12 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 		$dsdate            = htmlspecialchars_decode( $mi_obj->get_parameter( 'Ds_Date' ) );
 		$dshour            = htmlspecialchars_decode( $mi_obj->get_parameter( 'Ds_Hour' ) );
 		$dstermnal         = $mi_obj->get_parameter( 'Ds_Terminal' );
-		$dsmerchandata     = $mi_obj->get_parameter( 'Ds_MerchantData' );
 		$dssucurepayment   = $mi_obj->get_parameter( 'Ds_SecurePayment' );
 		$dscardcountry     = $mi_obj->get_parameter( 'Ds_Card_Country' );
 		$dsconsumercountry = $mi_obj->get_parameter( 'Ds_ConsumerLanguage' );
 		$dstransactiontype = $mi_obj->get_parameter( 'Ds_TransactionType' );
 		$dsmerchantidenti  = $mi_obj->get_parameter( 'Ds_Merchant_Identifier' );
 		$dscardbrand       = $mi_obj->get_parameter( 'Ds_Card_Brand' );
-		$dsmechandata      = $mi_obj->get_parameter( 'Ds_MerchantData' );
 		$dscargtype        = $mi_obj->get_parameter( 'Ds_Card_Type' );
 		$dserrorcode       = $mi_obj->get_parameter( 'Ds_ErrorCode' );
 		$dpaymethod        = $mi_obj->get_parameter( 'Ds_PayMethod' ); // D o R, D: Domiciliacion, R: Transferencia. Si se paga por Iupay o TC, no se utiliza.
@@ -739,7 +986,7 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 		if ( $response <= 99 ) {
 			// authorized.
 			$order_total_compare = number_format( $order->get_total(), 2, '', '' );
-			// remove 0 from bigining
+			// remove 0 from bigining.
 			$order_total_compare = ltrim( $order_total_compare, '0' );
 			$total               = ltrim( $total, '0' );
 			if ( $order_total_compare !== $total ) {
@@ -882,10 +1129,8 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 
 			if ( ! empty( $currencycode ) ) {
 				$currency = $currencycode;
-			} else {
-				if ( empty( $currencycode ) ) {
-					$currency = $currency_codes[ get_woocommerce_currency() ];
-				}
+			} elseif ( empty( $currencycode ) ) {
+				$currency = $currency_codes[ get_woocommerce_currency() ];
 			}
 			$merchant_module = 'WooCommerce_Redsys_Gateway_Light_' . REDSYS_WOOCOMMERCE_VERSION . '_WordPress.org';
 
@@ -925,7 +1170,7 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 				$this->log->add( 'redsys', __( 'DS_MERCHANT_MERCHANTNAME : ', 'woo-redsys-gateway-light' ) . $this->commercename );
 				$this->log->add( 'redsys', __( 'DS_MERCHANT_AUTHORISATIONCODE : ', 'woo-redsys-gateway-light' ) . $autorization_code );
 				$this->log->add( 'redsys', __( 'Ds_Merchant_TransactionDate : ', 'woo-redsys-gateway-light' ) . $autorization_date );
-				$this->log->add( 'redsys', __( 'ask_for_refund Asking por order #: ', 'woo-redsys-gateway-light' ) . $order_id );
+				$this->log->add( 'redsys', __( 'ask_for_refund Asking for order #: ', 'woo-redsys-gateway-light' ) . $order_id );
 				$this->log->add( 'redsys', ' ' );
 			}
 
@@ -1011,7 +1256,7 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 				$this->log->add( 'redsys', '       Once upon a time       ' );
 				$this->log->add( 'redsys', '/****************************/' );
 				$this->log->add( 'redsys', ' ' );
-				$this->log->add( 'redsys', __( 'check_redsys_refund Asking por order #: ', 'woo-redsys-gateway-light' ) . $order_id );
+				$this->log->add( 'redsys', __( 'check_redsys_refund Asking for order #: ', 'woo-redsys-gateway-light' ) . $order_id );
 			}
 
 			$refund_asked = $this->ask_for_refund( $order_id, $transaction_id, $order_total_sign );
@@ -1026,7 +1271,7 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 			do {
 				sleep( 5 );
 				$result = $this->check_redsys_refund( $order_id );
-				$x++;
+				++$x;
 			} while ( $x <= 20 && false === $result );
 			if ( 'yes' === $this->debug && $result ) {
 				$this->log->add( 'redsys', __( 'check_redsys_refund = true ', 'woo-redsys-gateway-light' ) . $result );
