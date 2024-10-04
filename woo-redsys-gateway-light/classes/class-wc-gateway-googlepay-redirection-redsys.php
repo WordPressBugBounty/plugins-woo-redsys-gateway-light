@@ -70,13 +70,13 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 	/**
 	 * $testsha256
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $testsha256;
 	/**
 	 * $testmode
 	 *
-	 * @var string
+	 * @var string|bool
 	 */
 	public $testmode;
 	/**
@@ -92,9 +92,9 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 	 */
 	public $method_description;
 	/**
-	 * $not_use_http
+	 * $not_use_https
 	 *
-	 * @var string
+	 * @var string|bool|null
 	 */
 	public $not_use_https;
 	/**
@@ -106,7 +106,7 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 	/**
 	 * $log
 	 *
-	 * @var WC_Logger
+	 * @var WC_Logger|null
 	 */
 	public $log;
 	/**
@@ -130,43 +130,43 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 	/**
 	 * $customer
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $customer;
 	/**
 	 * $commercename
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $commercename;
 	/**
 	 * $terminal
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $terminal;
 	/**
 	 * $secretsha256
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $secretsha256;
 	/**
 	 * $customtestsha256
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $customtestsha256;
 	/**
 	 * $redsyslanguage
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $redsyslanguage;
 	/**
 	 * $debug
 	 *
-	 * @var string
+	 * @var string|bool
 	 */
 	public $debug;
 	/**
@@ -521,26 +521,24 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 					}
 					$url = $this->testurlws;
 				}
-			} else {
-				if ( 'rd' === $type ) {
-					if ( 'yes' === $this->debug ) {
-						$this->log->add( 'googlepayredirecredsys', ' ' );
-						$this->log->add( 'googlepayredirecredsys', '/****************************/' );
-						$this->log->add( 'googlepayredirecredsys', '          URL Live RD         ' );
-						$this->log->add( 'googlepayredirecredsys', '/****************************/' );
-						$this->log->add( 'googlepayredirecredsys', ' ' );
-					}
-					$url = $this->liveurl;
-				} else {
-					if ( 'yes' === $this->debug ) {
-						$this->log->add( 'googlepayredirecredsys', ' ' );
-						$this->log->add( 'googlepayredirecredsys', '/****************************/' );
-						$this->log->add( 'googlepayredirecredsys', '          URL Live WS         ' );
-						$this->log->add( 'googlepayredirecredsys', '/****************************/' );
-						$this->log->add( 'googlepayredirecredsys', ' ' );
-					}
-					$url = $this->liveurlws;
+			} elseif ( 'rd' === $type ) {
+				if ( 'yes' === $this->debug ) {
+					$this->log->add( 'googlepayredirecredsys', ' ' );
+					$this->log->add( 'googlepayredirecredsys', '/****************************/' );
+					$this->log->add( 'googlepayredirecredsys', '          URL Live RD         ' );
+					$this->log->add( 'googlepayredirecredsys', '/****************************/' );
+					$this->log->add( 'googlepayredirecredsys', ' ' );
 				}
+				$url = $this->liveurl;
+			} else {
+				if ( 'yes' === $this->debug ) {
+					$this->log->add( 'googlepayredirecredsys', ' ' );
+					$this->log->add( 'googlepayredirecredsys', '/****************************/' );
+					$this->log->add( 'googlepayredirecredsys', '          URL Live WS         ' );
+					$this->log->add( 'googlepayredirecredsys', '/****************************/' );
+					$this->log->add( 'googlepayredirecredsys', ' ' );
+				}
+				$url = $this->liveurlws;
 			}
 		}
 		return $url;
@@ -993,7 +991,7 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 		$dsmechandata      = $mi_obj->get_parameter( 'Ds_MerchantData' );
 		$dscargtype        = $mi_obj->get_parameter( 'Ds_Card_Type' );
 		$dserrorcode       = $mi_obj->get_parameter( 'Ds_ErrorCode' );
-		$dpaymethod        = $mi_obj->get_parameter( 'Ds_PayMethod' ); // D o R, D: Domiciliacion, R: Transferencia. Si se paga por Iupay o TC, no se utiliza.
+		$dpaymethod        = $mi_obj->get_parameter( 'Ds_PayMethod' ); // D o R, D: Domiciliacion, R: Transferencia.
 		$response          = intval( $response );
 		$secretsha256      = get_transient( 'redsys_signature_' . sanitize_text_field( $ordermi ) );
 		$order1            = $ordermi;
@@ -1081,84 +1079,70 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 				if ( 'yes' === $this->debug ) {
 					$this->log->add( 'googlepayredirecredsys', '_payment_order_number_redsys saved: ' . $order1 );
 				}
-			} else {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-					$this->log->add( 'googlepayredirecredsys', '_payment_order_number_redsys NOT SAVED!!!' );
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-				}
+			} elseif ( 'yes' === $this->debug ) {
+				$this->log->add( 'googlepayredirecredsys', ' ' );
+				$this->log->add( 'googlepayredirecredsys', '_payment_order_number_redsys NOT SAVED!!!' );
+				$this->log->add( 'googlepayredirecredsys', ' ' );
 			}
 			if ( ! empty( $dsdate ) ) {
 				$data['_payment_date_redsys'] = $dsdate;
 				if ( 'yes' === $this->debug ) {
 					$this->log->add( 'googlepayredirecredsys', '_payment_date_redsys saved: ' . $dsdate );
 				}
-			} else {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-					$this->log->add( 'googlepayredirecredsys', '_payment_date_redsys NOT SAVED!!!' );
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-				}
+			} elseif ( 'yes' === $this->debug ) {
+				$this->log->add( 'googlepayredirecredsys', ' ' );
+				$this->log->add( 'googlepayredirecredsys', '_payment_date_redsys NOT SAVED!!!' );
+				$this->log->add( 'googlepayredirecredsys', ' ' );
 			}
 			if ( ! empty( $dsdate ) ) {
 				$data['_payment_terminal_redsys'] = $dstermnal;
 				if ( 'yes' === $this->debug ) {
 					$this->log->add( 'googlepayredirecredsys', '_payment_terminal_redsys saved: ' . $dstermnal );
 				}
-			} else {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-					$this->log->add( 'googlepayredirecredsys', '_payment_terminal_redsys NOT SAVED!!!' );
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-				}
+			} elseif ( 'yes' === $this->debug ) {
+				$this->log->add( 'googlepayredirecredsys', ' ' );
+				$this->log->add( 'googlepayredirecredsys', '_payment_terminal_redsys NOT SAVED!!!' );
+				$this->log->add( 'googlepayredirecredsys', ' ' );
 			}
 			if ( ! empty( $dshour ) ) {
 				$data['_payment_hour_redsys'] = $dshour;
 				if ( 'yes' === $this->debug ) {
 					$this->log->add( 'googlepayredirecredsys', '_payment_hour_redsys saved: ' . $dshour );
 				}
-			} else {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-					$this->log->add( 'googlepayredirecredsys', '_payment_hour_redsys NOT SAVED!!!' );
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-				}
+			} elseif ( 'yes' === $this->debug ) {
+				$this->log->add( 'googlepayredirecredsys', ' ' );
+				$this->log->add( 'googlepayredirecredsys', '_payment_hour_redsys NOT SAVED!!!' );
+				$this->log->add( 'googlepayredirecredsys', ' ' );
 			}
 			if ( ! empty( $id_trans ) ) {
 				$data['_authorisation_code_redsys'] = $authorisation_code;
 				if ( 'yes' === $this->debug ) {
 					$this->log->add( 'googlepayredirecredsys', '_authorisation_code_redsys saved: ' . $authorisation_code );
 				}
-			} else {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-					$this->log->add( 'googlepayredirecredsys', '_authorisation_code_redsys NOT SAVED!!!' );
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-				}
+			} elseif ( 'yes' === $this->debug ) {
+				$this->log->add( 'googlepayredirecredsys', ' ' );
+				$this->log->add( 'googlepayredirecredsys', '_authorisation_code_redsys NOT SAVED!!!' );
+				$this->log->add( 'googlepayredirecredsys', ' ' );
 			}
 			if ( ! empty( $currency_code ) ) {
 				$data['_corruncy_code_redsys'] = $currency_code;
 				if ( 'yes' === $this->debug ) {
 					$this->log->add( 'googlepayredirecredsys', '_corruncy_code_redsys saved: ' . $currency_code );
 				}
-			} else {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-					$this->log->add( 'googlepayredirecredsys', '_corruncy_code_redsys NOT SAVED!!!' );
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-				}
+			} elseif ( 'yes' === $this->debug ) {
+				$this->log->add( 'googlepayredirecredsys', ' ' );
+				$this->log->add( 'googlepayredirecredsys', '_corruncy_code_redsys NOT SAVED!!!' );
+				$this->log->add( 'googlepayredirecredsys', ' ' );
 			}
 			if ( ! empty( $dscardcountry ) ) {
 				$data['_card_country_redsys'] = $dscardcountry;
 				if ( 'yes' === $this->debug ) {
 					$this->log->add( 'googlepayredirecredsys', '_card_country_redsys saved: ' . $dscardcountry );
 				}
-			} else {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-					$this->log->add( 'googlepayredirecredsys', '_card_country_redsys NOT SAVED!!!' );
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-				}
+			} elseif ( 'yes' === $this->debug ) {
+				$this->log->add( 'googlepayredirecredsys', ' ' );
+				$this->log->add( 'googlepayredirecredsys', '_card_country_redsys NOT SAVED!!!' );
+				$this->log->add( 'googlepayredirecredsys', ' ' );
 			}
 			// This meta is essential for later use.
 			if ( ! empty( $secretsha256 ) ) {
@@ -1166,24 +1150,20 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 				if ( 'yes' === $this->debug ) {
 					$this->log->add( 'googlepayredirecredsys', '_redsys_secretsha256 saved: ' . $secretsha256 );
 				}
-			} else {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-					$this->log->add( 'googlepayredirecredsys', '_redsys_secretsha256 NOT SAVED!!!' );
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-				}
+			} elseif ( 'yes' === $this->debug ) {
+				$this->log->add( 'googlepayredirecredsys', ' ' );
+				$this->log->add( 'googlepayredirecredsys', '_redsys_secretsha256 NOT SAVED!!!' );
+				$this->log->add( 'googlepayredirecredsys', ' ' );
 			}
 			if ( ! empty( $dscode ) ) {
 				$data['_order_fuc_redsys'] = $dscode;
 				if ( 'yes' === $this->debug ) {
 					$this->log->add( 'googlepayredirecredsys', '_order_fuc_redsys: ' . $dscode );
 				}
-			} else {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-					$this->log->add( 'googlepayredirecredsys', '_order_fuc_redsys NOT SAVED!!!' );
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-				}
+			} elseif ( 'yes' === $this->debug ) {
+				$this->log->add( 'googlepayredirecredsys', ' ' );
+				$this->log->add( 'googlepayredirecredsys', '_order_fuc_redsys NOT SAVED!!!' );
+				$this->log->add( 'googlepayredirecredsys', ' ' );
 			}
 			WCRedL()->update_order_meta( $order->get_id(), $data );
 			// Payment completed.
@@ -1338,10 +1318,8 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 
 		if ( ! empty( $currencycode ) ) {
 			$currency = $currencycode;
-		} else {
-			if ( ! empty( $currency_codes ) ) {
-				$currency = $currency_codes[ get_woocommerce_currency() ];
-			}
+		} elseif ( ! empty( $currency_codes ) ) {
+			$currency = $currency_codes[ get_woocommerce_currency() ];
 		}
 
 		$mi_obj = new RedsysAPI();
@@ -1596,13 +1574,3 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 		return $available_gateways;
 	}
 }
-/**
- * Add the gateway to WooCommerce
- *
- * @param array $methods WooCommerce payment methods.
- */
-function woocommerce_add_gateway_googlepay_redirection_redsys( $methods ) {
-		$methods[] = 'WC_Gateway_GooglePay_Redirection_Redsys';
-		return $methods;
-}
-add_filter( 'woocommerce_payment_gateways', 'woocommerce_add_gateway_googlepay_redirection_redsys' );

@@ -69,13 +69,13 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 	/**
 	 * $testsha256
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $testsha256;
 	/**
 	 * $testmode
 	 *
-	 * @var string
+	 * @var string|bool
 	 */
 	public $testmode;
 	/**
@@ -91,9 +91,9 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 	 */
 	public $method_description;
 	/**
-	 * $not_use_http
+	 * $not_use_https
 	 *
-	 * @var string
+	 * @var string|bool|null
 	 */
 	public $not_use_https;
 	/**
@@ -105,7 +105,7 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 	/**
 	 * $log
 	 *
-	 * @var WC_Logger
+	 * @var WC_Logger|null
 	 */
 	public $log;
 	/**
@@ -129,43 +129,43 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 	/**
 	 * $customer
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $customer;
 	/**
 	 * $commercename
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $commercename;
 	/**
 	 * $terminal
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $terminal;
 	/**
 	 * $secretsha256
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $secretsha256;
 	/**
 	 * $customtestsha256
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $customtestsha256;
 	/**
 	 * $redsyslanguage
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $redsyslanguage;
 	/**
 	 * $debug
 	 *
-	 * @var string
+	 * @var string|bool
 	 */
 	public $debug;
 	/**
@@ -174,48 +174,48 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 	 * @var bool
 	 */
 	public $enabled;
-
 	/**
 	 * $hashtype
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $hashtype;
-
 	/**
 	 * $lwvactive
 	 *
-	 * @var string
+	 * @var string|bool|null
 	 */
 	public $lwvactive;
-
 	/**
 	 * $psd2
 	 *
-	 * @var string
+	 * @var string|bool|null
 	 */
 	public $psd2;
-
 	/**
 	 * $orderdo
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $orderdo;
-
 	/**
 	 * $secret
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $secret;
-
 	/**
 	 * $payoptions
 	 *
-	 * @var string
+	 * @var string|null
 	 */
 	public $payoptions;
+	/**
+	 * $logo
+	 *
+	 * @var string|null
+	 */
+	public $logo;
 
 	/**
 	 * Constructor for the gateway.
@@ -416,11 +416,11 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 			'payoptions'       => array(
 				'title'       => __( 'Pay Options', 'woo-redsys-gateway-light' ),
 				'type'        => 'select',
-				'description' => __( 'Chose options in Redsys Gateway (by Default Credit Card + iUpay)', 'woo-redsys-gateway-light' ),
+				'description' => __( 'Chose options in Redsys Gateway (by Default Credit Card)', 'woo-redsys-gateway-light' ),
 				'default'     => 'T',
 				'options'     => array(
 					' ' => __( 'All Methods', 'woo-redsys-gateway-light' ),
-					'T' => __( 'Credit Card & iUpay', 'woo-redsys-gateway-light' ),
+					'T' => __( 'Credit Card', 'woo-redsys-gateway-light' ),
 					'C' => __( 'Credit Card', 'woo-redsys-gateway-light' ),
 				),
 			),
@@ -940,7 +940,7 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 		$dscardbrand       = $mi_obj->get_parameter( 'Ds_Card_Brand' );
 		$dscargtype        = $mi_obj->get_parameter( 'Ds_Card_Type' );
 		$dserrorcode       = $mi_obj->get_parameter( 'Ds_ErrorCode' );
-		$dpaymethod        = $mi_obj->get_parameter( 'Ds_PayMethod' ); // D o R, D: Domiciliacion, R: Transferencia. Si se paga por Iupay o TC, no se utiliza.
+		$dpaymethod        = $mi_obj->get_parameter( 'Ds_PayMethod' ); // D o R, D: Domiciliacion, R: Transferencia.
 		$order1            = $ordermi;
 		$order2            = WCRedL()->clean_order_number( $ordermi );
 		$order             = $this->get_redsys_order( (int) $order2 );
