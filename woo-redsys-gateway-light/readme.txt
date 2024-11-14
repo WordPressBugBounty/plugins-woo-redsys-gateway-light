@@ -2,9 +2,9 @@
 Contributors: j.conti
 Tags: woocommerce, redsys, bizum, Google Pay, GPay
 Requires at least: 4.0
-Tested up to: 6.6
+Tested up to: 6.7
 Donate link: https://plugins.joseconti.com/product-category/plugins/donaciones/
-Stable tag: 6.2.1
+Stable tag: 6.2.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 WC requires at least: 7.5
@@ -98,6 +98,11 @@ Check [WooCommerce Redsys Gateway premium version](https://plugins.joseconti.com
 
 == Changelog ==
 
+== 6.2.2 ==
+
+* Updated escaping in Bizum from esc_html_ to kses.
+* Removed Merchant Module.
+
 == 6.2.1 ==
 
 * Fixed Deprecated $logo.
@@ -105,10 +110,6 @@ Check [WooCommerce Redsys Gateway premium version](https://plugins.joseconti.com
 * Added wp_kses.
 * removed extra items in array().
 * removed some strings (iupay).
-
-
-== 6.2.1 ==
-
 * Removed duplicated items.
 * Moved Class inicialization.
 * Removed iUpay Strings.
