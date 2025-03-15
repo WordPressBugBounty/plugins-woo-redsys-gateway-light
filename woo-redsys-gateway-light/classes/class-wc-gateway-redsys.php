@@ -616,7 +616,7 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 		}
 		$merchant_module = 'WooCommerce_Redsys_Gateway_Light_' . REDSYS_WOOCOMMERCE_VERSION . '_WordPress.org';
 		// redsys Args.
-		$mi_obj = new RedsysAPI();
+		$mi_obj = new RedsysLiteAPI();
 		$mi_obj->set_parameter( 'DS_MERCHANT_AMOUNT', $order_total_sign );
 		$mi_obj->set_parameter( 'DS_MERCHANT_ORDER', $transaction_id2 );
 		$mi_obj->set_parameter( 'DS_MERCHANT_MERCHANTCODE', $this->customer );
@@ -870,7 +870,7 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 				$remote_sign = '';
 			}
 
-			$mi_obj      = new RedsysAPI();
+			$mi_obj      = new RedsysLiteAPI();
 			$localsecret = $mi_obj->create_merchant_signature_notif( $usesecretsha256, $data );
 
 			if ( $localsecret === $remote_sign ) {
@@ -920,11 +920,21 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 	/**
 	 * Successful Payment!
 	 *
-	 * @param array $posted posted data.
+	 * @param array $params posted data.
 	 * @return void
 	 */
-	public function successful_request( $posted ) {
+	public function successful_request( $params = null ) {
 		global $woocommerce;
+
+		if ( is_null( $params ) ) {
+			$params = stripslashes_deep( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		}
+
+		if ( 'yes' === $this->testmode ) {
+			$usesecretsha256 = ! empty( $this->customtestsha256 ) ? $this->customtestsha256 : $this->secretsha256;
+		} else {
+			$usesecretsha256 = $this->secretsha256;
+		}
 
 		if ( 'yes' === $this->testmode ) {
 			$usesecretsha256 = $this->customtestsha256;
@@ -937,10 +947,10 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 			$usesecretsha256 = $this->secretsha256;
 		}
 
-		$version           = sanitize_text_field( wp_unslash( $_POST['Ds_SignatureVersion'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotValidated
-		$data              = sanitize_text_field( wp_unslash( $_POST['Ds_MerchantParameters'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotValidated
-		$remote_sign       = sanitize_text_field( wp_unslash( $_POST['Ds_Signature'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotValidated
-		$mi_obj            = new RedsysAPI();
+		$version           = sanitize_text_field( wp_unslash( $params['Ds_SignatureVersion'] ?? '' ) );
+		$data              = sanitize_text_field( wp_unslash( $params['Ds_MerchantParameters'] ?? '' ) );
+		$remote_sign       = sanitize_text_field( wp_unslash( $params['Ds_Signature'] ?? '' ) );
+		$mi_obj            = new RedsysLiteAPI();
 		$usesecretsha256   = $this->secretsha256;
 		$dscardnumbercompl = '';
 		$dsexpiration      = '';
@@ -1032,6 +1042,9 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 			}
 			if ( ! empty( $dsdate ) ) {
 				WCRedL()->update_order_meta( $order->get_id(), '_payment_date_redsys', $dsdate );
+			}
+			if ( ! empty( $dscode ) ) {
+				WCRedL()->update_order_meta( $order->get_id(), '_order_fuc_redsys', $dscode );
 			}
 			if ( ! empty( $dshour ) ) {
 				WCRedL()->update_order_meta( $order->get_id(), '_payment_hour_redsys', $dshour );
@@ -1158,7 +1171,7 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 		}
 		$merchant_module = 'WooCommerce_Redsys_Gateway_Light_' . REDSYS_WOOCOMMERCE_VERSION;
 
-		$mi_obj = new RedsysAPI();
+		$mi_obj = new RedsysLiteAPI();
 
 		$mi_obj->set_parameter( 'DS_MERCHANT_AMOUNT', $amount );
 		$mi_obj->set_parameter( 'DS_MERCHANT_ORDER', $transaction_id );
@@ -1217,7 +1230,7 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 			)
 		);
 		if ( 'yes' === $this->debug ) {
-			$this->log->add( 'redsys', '$post_arg: ' . print_r( $post_arg, true ) );
+			$this->log->add( 'redsys', '$post_arg: ' . print_r( $post_arg, true ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_print_r
 		}
 		if ( is_wp_error( $post_arg ) ) {
 			if ( 'yes' === $this->debug ) {

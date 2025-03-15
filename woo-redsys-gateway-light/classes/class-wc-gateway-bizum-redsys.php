@@ -808,7 +808,7 @@ class WC_Gateway_Bizum_Redsys extends WC_Payment_Gateway {
 		}
 		$nombr_apellidos = $order->get_billing_first_name() . ' ' . $order->get_billing_last_name();
 		// redsys Args.
-		$mi_obj = new RedsysAPI();
+		$mi_obj = new RedsysLiteAPI();
 		$mi_obj->set_parameter( 'DS_MERCHANT_AMOUNT', $order_total_sign );
 		$mi_obj->set_parameter( 'DS_MERCHANT_ORDER', $transaction_id2 );
 		$mi_obj->set_parameter( 'DS_MERCHANT_MERCHANTCODE', $this->customer );
@@ -995,7 +995,7 @@ class WC_Gateway_Bizum_Redsys extends WC_Payment_Gateway {
 				}
 				// Sanitize and process the data.
 			}
-			$mi_obj            = new RedsysAPI();
+			$mi_obj            = new RedsysLiteAPI();
 			$decodec           = $mi_obj->decode_merchant_parameters( $data );
 			$order_id          = $mi_obj->get_parameter( 'Ds_Order' );
 			$secretsha256      = get_transient( 'redsys_signature_' . sanitize_title( $order_id ) );
@@ -1095,10 +1095,10 @@ class WC_Gateway_Bizum_Redsys extends WC_Payment_Gateway {
 	/**
 	 * Successful Payment!
 	 *
-	 * @param array $posted Post data successsful request.
+	 * @param array $params Post data successsful request.
 	 * @return void
 	 */
-	public function successful_request( $posted ) {
+	public function successful_request( $params ) {
 
 		if ( 'yes' === $this->debug ) {
 			$this->log->add( 'bizumredsys', ' ' );
@@ -1108,23 +1108,13 @@ class WC_Gateway_Bizum_Redsys extends WC_Payment_Gateway {
 			$this->log->add( 'bizumredsys', ' ' );
 		}
 
-		if ( isset( $_POST['Ds_SignatureVersion'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			$version = sanitize_text_field( wp_unslash( $_POST['Ds_SignatureVersion'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		} else {
-			$version = '';
+		if ( is_null( $params ) ) {
+			$params = stripslashes_deep( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		}
 
-		if ( isset( $_POST['Ds_MerchantParameters'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			$data = sanitize_text_field( wp_unslash( $_POST['Ds_MerchantParameters'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		} else {
-			$data = '';
-		}
-
-		if ( isset( $_POST['Ds_Signature'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			$remote_sign = sanitize_text_field( wp_unslash( $_POST['Ds_Signature'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		} else {
-			$remote_sign = '';
-		}
+		$version     = sanitize_text_field( wp_unslash( $params['Ds_SignatureVersion'] ?? '' ) );
+		$data        = sanitize_text_field( wp_unslash( $params['Ds_MerchantParameters'] ?? '' ) );
+		$remote_sign = sanitize_text_field( wp_unslash( $params['Ds_Signature'] ?? '' ) );
 
 		if ( 'yes' === $this->debug ) {
 			$this->log->add( 'bizumredsys', ' ' );
@@ -1134,7 +1124,7 @@ class WC_Gateway_Bizum_Redsys extends WC_Payment_Gateway {
 			$this->log->add( 'bizumredsys', ' ' );
 		}
 
-		$mi_obj            = new RedsysAPI();
+		$mi_obj            = new RedsysLiteAPI();
 		$usesecretsha256   = $this->secretsha256;
 		$dscardnumbercompl = '';
 		$dsexpiration      = '';
@@ -1255,6 +1245,16 @@ class WC_Gateway_Bizum_Redsys extends WC_Payment_Gateway {
 				$this->log->add( 'bizumredsys', ' ' );
 				$this->log->add( 'bizumredsys', '_payment_order_number_redsys NOT SAVED!!!' );
 				$this->log->add( 'bizumredsys', ' ' );
+			}
+			if ( ! empty( $dscode ) ) {
+				$data['_order_fuc_redsys'] = $dscode;
+				if ( 'yes' === $this->debug ) {
+					$this->log->add( 'googlepayredirecredsys', '_order_fuc_redsys: ' . $dscode );
+				}
+			} elseif ( 'yes' === $this->debug ) {
+				$this->log->add( 'googlepayredirecredsys', ' ' );
+				$this->log->add( 'googlepayredirecredsys', '_order_fuc_redsys NOT SAVED!!!' );
+				$this->log->add( 'googlepayredirecredsys', ' ' );
 			}
 			if ( ! empty( $dsdate ) ) {
 				WCRedL()->update_order_meta( $order->get_id(), '_payment_date_redsys', $dsdate );
@@ -1464,7 +1464,7 @@ class WC_Gateway_Bizum_Redsys extends WC_Payment_Gateway {
 			$currency = $currency_codes[ get_woocommerce_currency() ];
 		}
 
-		$mi_obj = new RedsysAPI();
+		$mi_obj = new RedsysLiteAPI();
 		$mi_obj->set_parameter( 'DS_MERCHANT_AMOUNT', $amount );
 		$mi_obj->set_parameter( 'DS_MERCHANT_ORDER', $transaction_id );
 		$mi_obj->set_parameter( 'DS_MERCHANT_MERCHANTCODE', $this->customer );
