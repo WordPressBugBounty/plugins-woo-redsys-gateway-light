@@ -4,7 +4,7 @@ Tags: woocommerce, redsys, bizum, Google Pay, GPay
 Requires at least: 4.0
 Tested up to: 6.7
 Donate link: https://plugins.joseconti.com/product-category/plugins/donaciones/
-Stable tag: 6.3.1
+Stable tag: 6.4.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 WC requires at least: 7.5
@@ -97,6 +97,11 @@ Check [WooCommerce Redsys Gateway premium version](https://plugins.joseconti.com
 4. Language: Set the Redsys Gateway Language.
 
 == Changelog ==
+
+== 6.4.0 ==
+
+* Updated hook for mark payments as made bu URL Params.
+* Fixed Redsys Data translation in Thankyou Page.
 
 == 6.3.1 ==
 
