@@ -8,7 +8,7 @@
  * Requires Plugins: woocommerce
  * Plugin URI: https://wordpress.org/plugins/woo-redsys-gateway-light/
  * Description: Extends WooCommerce with a RedSys gateway. This is a Lite version, if you want many more, check the premium version https://woocommerce.com/products/redsys-gateway/
- * Version: 6.4.0
+ * Version: 6.5.0
  * Author: José Conti
  * Author URI: https://plugins.joseconti.com/
  * Tested up to: 6.7
@@ -21,12 +21,12 @@
  * License URI: http://www.gnu.org/licenses/gpl-3.0.html
  */
 
-define( 'REDSYS_WOOCOMMERCE_VERSION', '6.4.0' );
+define( 'REDSYS_WOOCOMMERCE_VERSION', '6.5.0' );
 define( 'REDSYS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 if ( ! defined( 'REDSYS_PLUGIN_PATH' ) ) {
 	define( 'REDSYS_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 }
-define( 'REDSYS_POST_UPDATE_URL', 'https://plugins.joseconti.com/2025/04/12/woocommerce-redsys-gateway-light-6-4-x/' );
+define( 'REDSYS_POST_UPDATE_URL', 'https://plugins.joseconti.com/2025/06/07/woocommerce-redsys-gateway-light-6-5-x/' );
 define( 'REDSYS_TELEGRAM_URL', 'https://t.me/wooredsys' );
 define( 'REDSYS_REVIEW', 'https://wordpress.org/support/plugin/woo-redsys-gateway-light/reviews/?rate=5#new-post' );
 define( 'REDSYS_DONATION', 'https://plugins.joseconti.com/product-category/plugins/donaciones/' );
@@ -42,6 +42,7 @@ if ( ! defined( 'REDSYS_PLUGIN_CLASS_PATH' ) ) {
 	define( 'REDSYS_PLUGIN_CLASS_PATH', REDSYS_PLUGIN_PATH . 'classes/' );
 }
 
+add_action( 'plugins_loaded', 'redsys_language_init', 10 );
 add_action( 'woocommerce_loaded', 'woocommerce_gateway_redsys_init', 11 );
 
 add_action(
@@ -59,6 +60,13 @@ if ( ! class_exists( 'RedsysLiteAPI' ) ) {
 	require_once 'includes/class-redsysliteapi.php';
 }
 require_once 'about-redsys.php';
+
+/**
+ * Load plugin textdomain.
+ */
+function redsys_language_init() {
+	load_plugin_textdomain( 'woo-redsys-gateway-light', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+}
 
 /**
  * Plugin updates
