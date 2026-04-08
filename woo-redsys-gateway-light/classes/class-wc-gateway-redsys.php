@@ -928,22 +928,10 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 			$usesecretsha256 = $this->secretsha256;
 		}
 
-		if ( 'yes' === $this->testmode ) {
-			$usesecretsha256 = $this->customtestsha256;
-			if ( ! empty( $usesecretsha256 ) ) {
-				$usesecretsha256 = $this->customtestsha256;
-			} else {
-				$usesecretsha256 = $this->secretsha256;
-			}
-		} else {
-			$usesecretsha256 = $this->secretsha256;
-		}
-
 		$version           = sanitize_text_field( wp_unslash( $params['Ds_SignatureVersion'] ?? '' ) );
 		$data              = sanitize_text_field( wp_unslash( $params['Ds_MerchantParameters'] ?? '' ) );
 		$remote_sign       = sanitize_text_field( wp_unslash( $params['Ds_Signature'] ?? '' ) );
 		$mi_obj            = new RedsysLiteAPI();
-		$usesecretsha256   = $this->secretsha256;
 		$dscardnumbercompl = '';
 		$dsexpiration      = '';
 		$dsmerchantidenti  = '';
@@ -952,6 +940,15 @@ class WC_Gateway_Redsys extends WC_Payment_Gateway {
 		$dsexpirymonth     = '';
 		$decodedata        = $mi_obj->decode_merchant_parameters( $data );
 		$localsecret       = $mi_obj->create_merchant_signature_notif( $usesecretsha256, $data );
+
+		// Verify cryptographic signature to prevent payment forgery.
+		if ( $localsecret !== $remote_sign ) {
+			if ( 'yes' === $this->debug ) {
+				$this->log->add( 'redsys', 'Signature verification failed in successful_request. Local: ' . $localsecret . ' Remote: ' . $remote_sign );
+			}
+			return;
+		}
+
 		$total             = $mi_obj->get_parameter( 'Ds_Amount' );
 		$ordermi           = $mi_obj->get_parameter( 'Ds_Order' );
 		$dscode            = $mi_obj->get_parameter( 'Ds_MerchantCode' );
