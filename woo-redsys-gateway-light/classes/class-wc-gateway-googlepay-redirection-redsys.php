@@ -170,6 +170,12 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 	 */
 	public $debug;
 	/**
+	 * $orderdo
+	 *
+	 * @var string|bool
+	 */
+	public $orderdo;
+	/**
 	 * $enabled
 	 *
 	 * @var bool
@@ -187,12 +193,15 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 		/**
 		 * Filter the icon for the Google Pay Redirection Redsys gateway.
 		 *
+		 * The value returned is escaped as a URL: WooCommerce prints the icon
+		 * inside an image tag without escaping it.
+		 *
 		 * @param string $icon The URL of the icon.
 		 * @return string The filtered URL of the icon.
 		 *
 		 * @since 6.0.0
 		 */
-		$this->icon                 = apply_filters( 'woocommerce_' . $this->id . '_icon', REDSYS_PLUGIN_URL . 'assets/images/GPay-peque.svg' );
+		$this->icon                 = esc_url( apply_filters( 'woocommerce_' . $this->id . '_icon', REDSYS_PLUGIN_URL . 'assets/images/GPay-peque.svg' ) );
 		$this->has_fields           = false;
 		$this->liveurl              = 'https://sis.redsys.es/sis/realizarPago';
 		$this->testurl              = 'https://sis-t.redsys.es:25443/sis/realizarPago';
@@ -218,6 +227,7 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 		$this->customtestsha256 = WCRedL()->get_redsys_option( 'customtestsha256', 'googlepayredirecredsys' );
 		$this->redsyslanguage   = WCRedL()->get_redsys_option( 'redsyslanguage', 'googlepayredirecredsys' );
 		$this->debug            = WCRedL()->get_redsys_option( 'debug', 'googlepayredirecredsys' );
+		$this->orderdo          = WCRedL()->get_redsys_option( 'orderdo', 'googlepayredirecredsys' );
 		$this->log              = new WC_Logger();
 		$this->supports         = array(
 			'products',
@@ -344,13 +354,13 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 			),
 			'secretsha256'     => array(
 				'title'       => __( 'Encryption secret passphrase SHA-256', 'woo-redsys-gateway-light' ),
-				'type'        => 'text',
+				'type'        => 'password',
 				'description' => __( 'Encryption secret passphrase SHA-256 provided by your bank.', 'woo-redsys-gateway-light' ),
 				'desc_tip'    => true,
 			),
 			'customtestsha256' => array(
 				'title'       => __( 'TEST MODE: Encryption secret passphrase SHA-256', 'woo-redsys-gateway-light' ),
-				'type'        => 'text',
+				'type'        => 'password',
 				'description' => __( 'Encryption secret passphrase SHA-256 provided by your bank for test mode.', 'woo-redsys-gateway-light' ),
 				'desc_tip'    => true,
 			),
@@ -616,8 +626,8 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 		$product_description = __( 'Order', 'woo-redsys-gateway-light' ) . ' ' . $order->get_order_number();
 		$merchant_name       = $this->commercename;
 		$currency            = $currency_codes[ get_woocommerce_currency() ];
-		$name                = WCRedL()->get_order_meta( $order_id, '_billing_first_name', true );
-		$lastname            = WCRedL()->get_order_meta( $order_id, '_billing_last_name', true );
+		$name                = $order->get_billing_first_name();
+		$lastname            = $order->get_billing_last_name();
 
 		if ( class_exists( 'SitePress' ) ) {
 			$gatewaylanguage = WCRedL()->get_lang_code( ICL_LANGUAGE_CODE );
@@ -626,7 +636,7 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 		} else {
 			$gatewaylanguage = '001';
 		}
-		$returnfromredsys   = $order->get_cancel_order_url();
+		$returnfromredsys   = WCRedL()->get_cancel_url_raw( $order );
 		$dsmerchantterminal = $this->terminal;
 		if ( 'yes' === $this->not_use_https ) {
 				$final_notify_url = $this->notify_url_not_https;
@@ -654,7 +664,8 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 
 		if ( 'yes' === $this->debug ) {
 			$this->log->add( 'googlepayredirecredsys', ' ' );
-			$this->log->add( 'googlepayredirecredsys', 'Data sent to GPay, $gpay_data_send: ' . print_r( $gpay_data_send, true ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_print_r
+			// The signing secret travels in this array and must never reach the log.
+			$this->log->add( 'googlepayredirecredsys', 'Data sent to GPay, $gpay_data_send: ' . print_r( array_diff_key( $gpay_data_send, array( 'secretsha256' => '' ) ), true ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_print_r
 			$this->log->add( 'googlepayredirecredsys', ' ' );
 		}
 
@@ -739,10 +750,17 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 		foreach ( $redsys_args as $key => $value ) {
 			$form_inputs[] = '<input type="hidden" name="' . $key . '" value="' . esc_attr( $value ) . '" />';
 		}
-		wc_enqueue_js(
-			'
+		/**
+		 * Filters the spinner image of the "redirecting" overlay (WooCommerce's own filter).
+		 *
+		 * @param string $url URL of the spinner image.
+		 */
+		$loader_url = apply_filters( 'woocommerce_ajax_loader_url', WC()->plugin_url() . '/assets/images/select2-spinner.gif' );
+		wp_add_inline_script(
+			'woocommerce',
+			'jQuery( function( $ ) {
 		$("body").block({
-			message: "<img src=\"' . esc_url( apply_filters( 'woocommerce_ajax_loader_url', WC()->plugin_url() . '/assets/images/select2-spinner.gif' ) ) . '\" alt=\"Redirecting&hellip;\" style=\"float:left; margin-right: 10px;\" />' . __( 'Thank you for your order. We are now redirecting you to Redsys to make the payment.', 'woo-redsys-gateway-light' ) . '",
+			message: "<img src=\"' . esc_url( $loader_url ) . '\" alt=\"Redirecting&hellip;\" style=\"float:left; margin-right: 10px;\" />' . esc_js( esc_html__( 'Thank you for your order. We are now redirecting you to Redsys to make the payment.', 'woo-redsys-gateway-light' ) ) . '\",
 			overlayCSS:
 			{
 				background: "#fff",
@@ -759,11 +777,11 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 			}
 		});
 	jQuery("#submit_redsys_payment_form").click();
-	'
+	} );'
 		);
 		return '<form action="' . esc_url( $redsys_adr ) . '" method="post" id="redsys_payment_form" target="_top">
 		' . implode( '', $form_inputs ) . '
-		<input type="submit" class="button-alt" id="submit_redsys_payment_form" value="' . __( 'Pay with Gpay', 'woo-redsys-gateway-light' ) . '" /> <a class="button cancel" href="' . esc_url( $order->get_cancel_order_url() ) . '">' . __( 'Cancel order &amp; restore cart', 'woo-redsys-gateway-light' ) . '</a>
+		<input type="submit" class="button-alt" id="submit_redsys_payment_form" value=\"' . esc_attr__( 'Pay with Gpay', 'woo-redsys-gateway-light' ) . '\" /> <a class="button cancel" href="' . esc_url( $order->get_cancel_order_url() ) . '">' . esc_html__( 'Cancel order &amp; restore cart', 'woo-redsys-gateway-light' ) . '</a>
 	</form>';
 	}
 
@@ -787,13 +805,84 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 	 * @param obj $order Order object.
 	 */
 	public function receipt_page( $order ) {
+		// The same markup the card and Bizum pages allow (S-073).
+		$allowed_html = array(
+			'form'  => array(
+				'action' => array(),
+				'method' => array(),
+				'id'     => array(),
+				'target' => array(),
+			),
+			'input' => array(
+				'type'  => array(),
+				'class' => array(),
+				'id'    => array(),
+				'value' => array(),
+				'name'  => array(),
+			),
+			'a'     => array(
+				'class' => array(),
+				'href'  => array(),
+			),
+		);
 		echo '<p>' . esc_html__( 'Thank you for your order, please click the button below to pay with Google Pay.', 'woo-redsys-gateway-light' ) . '</p>';
-		echo $this->generate_redsys_form( $order ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo wp_kses( $this->generate_redsys_form( $order ), $allowed_html );
 	}
 
 	/**
 	 * Check redsys IPN validity
 	 */
+	/**
+	 * Resolve the SHA-256 secret to verify an already-decoded notification
+	 * against: an order-level override (a short-lived transient set at
+	 * checkout, or the persisted order meta) takes precedence over the
+	 * gateway's own settings-based secret. $mi_obj must already have had
+	 * decode_merchant_parameters() called on it, so Ds_Order is available.
+	 *
+	 * check_ipn_request_is_valid() and successful_request() both call this
+	 * SAME method rather than each re-implementing the resolution — a past
+	 * bug had successful_request() using only the live-mode settings secret,
+	 * ignoring test mode and per-order overrides (see docs/lessons-learned.md).
+	 *
+	 * @since 7.1.0
+	 * @param RedsysLiteAPI $mi_obj Notification data, already decoded.
+	 * @return string
+	 */
+	private function resolve_notification_secret( $mi_obj ) {
+		// The payload is the caller's until its signature is verified: an order
+		// number that is not a string names no order.
+		$order_id          = $mi_obj->get_parameter( 'Ds_Order' );
+		$order_id          = is_string( $order_id ) ? $order_id : '';
+		$secretsha256      = get_transient( 'redsys_signature_' . sanitize_text_field( $order_id ) );
+		$order2            = WCRedL()->clean_order_number( $order_id );
+		$secretsha256_meta = WCRedL()->get_order_meta( $order2, '_redsys_secretsha256', true );
+
+		// WCRedL()->get_order() does `new WC_Order( $order_id )`, which throws
+		// on an invalid/nonexistent ID — reachable here from an unauthenticated
+		// caller's Ds_Order value, before any signature has been verified.
+		// Fall back to the guest/no-user secret rather than letting that
+		// exception surface as an uncaught 500.
+		try {
+			$order   = WCRedL()->get_order( $order2 );
+			$user_id = $order->get_user_id();
+		} catch ( Exception $e ) {
+			$user_id = 0;
+		}
+		$usesecretsha256 = $this->get_redsys_sha256( $user_id );
+
+		if ( $secretsha256_meta ) {
+			$usesecretsha256 = $secretsha256_meta;
+		} elseif ( ! empty( $secretsha256 ) ) {
+			$usesecretsha256 = $secretsha256;
+		}
+
+		if ( 'yes' === $this->debug ) {
+			$this->log->add( 'googlepayredirecredsys', 'resolve_notification_secret: order=' . $order_id . ' source=' . ( $secretsha256_meta ? 'meta' : ( $secretsha256 ? 'transient' : 'settings' ) ) );
+		}
+
+		return $usesecretsha256;
+	}
+
 	public function check_ipn_request_is_valid() {
 
 		if ( 'yes' === $this->debug ) {
@@ -816,56 +905,18 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 			$version           = sanitize_text_field( wp_unslash( $_POST['Ds_SignatureVersion'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			$data              = RedsysLiteAPI::sanitize_merchant_parameters( wp_unslash( $_POST['Ds_MerchantParameters'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			$remote_sign       = sanitize_text_field( wp_unslash( $_POST['Ds_Signature'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			$mi_obj            = new RedsysLiteAPI();
-			$decodec           = $mi_obj->decode_merchant_parameters( $data );
-			$order_id          = $mi_obj->get_parameter( 'Ds_Order' );
-			$ds_merchant_code  = $mi_obj->get_parameter( 'Ds_MerchantCode' );
-			$secretsha256      = get_transient( 'redsys_signature_' . sanitize_text_field( $order_id ) );
-			$order1            = $order_id;
-			$order2            = WCRedL()->clean_order_number( $order1 );
-			$secretsha256_meta = WCRedL()->get_order_meta( $order2, '_redsys_secretsha256', true );
+			$mi_obj          = new RedsysLiteAPI();
+			$decodec         = $mi_obj->decode_merchant_parameters( $data );
+			$order_id        = $mi_obj->get_parameter( 'Ds_Order' );
+			$order_id        = is_string( $order_id ) ? $order_id : '';
+			$usesecretsha256 = $this->resolve_notification_secret( $mi_obj );
 
 			if ( 'yes' === $this->debug ) {
-				$this->log->add( 'googlepayredirecredsys', ' ' );
 				$this->log->add( 'googlepayredirecredsys', 'Signature from Redsys: ' . $remote_sign );
-				$this->log->add( 'googlepayredirecredsys', 'Name transient remote: redsys_signature_' . sanitize_title( $order_id ) );
-				$this->log->add( 'googlepayredirecredsys', 'Secret SHA256 transcient: ' . $secretsha256 );
-				$this->log->add( 'googlepayredirecredsys', ' ' );
 			}
 
-			if ( 'yes' === $this->debug ) {
-				$order_id = $mi_obj->get_parameter( 'Ds_Order' );
-				$this->log->add( 'googlepayredirecredsys', 'Order ID: ' . $order_id );
-			}
-			$order           = WCRedL()->get_order( $order2 );
-			$user_id         = $order->get_user_id();
-			$usesecretsha256 = $this->get_redsys_sha256( $user_id );
-			if ( empty( $secretsha256 ) && ! $secretsha256_meta ) {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-					$this->log->add( 'googlepayredirecredsys', 'Using $usesecretsha256 Settings' );
-					$this->log->add( 'googlepayredirecredsys', 'Secret SHA256 Settings: ' . $usesecretsha256 );
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-				}
-			} elseif ( $secretsha256_meta ) {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-					$this->log->add( 'googlepayredirecredsys', 'Using $secretsha256_meta Meta' );
-					$this->log->add( 'googlepayredirecredsys', 'Secret SHA256 Meta: ' . $secretsha256_meta );
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-				}
-				$usesecretsha256 = $secretsha256_meta;
-			} else {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-					$this->log->add( 'googlepayredirecredsys', 'Using $secretsha256 Transcient' );
-					$this->log->add( 'googlepayredirecredsys', 'Secret SHA256 Transcient: ' . $secretsha256 );
-					$this->log->add( 'googlepayredirecredsys', ' ' );
-				}
-				$usesecretsha256 = $secretsha256;
-			}
 			$localsecret = $mi_obj->create_merchant_signature_notif( $usesecretsha256, $data );
-			if ( $localsecret === $remote_sign ) {
+			if ( hash_equals( $localsecret, $remote_sign ) ) {
 				if ( 'yes' === $this->debug ) {
 					$this->log->add( 'googlepayredirecredsys', 'Received valid notification from Servired/RedSys' );
 					$this->log->add( 'googlepayredirecredsys', $data );
@@ -879,33 +930,13 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 				return false;
 			}
 		} else {
-			$version           = sanitize_text_field( wp_unslash( $_POST['Ds_SignatureVersion'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			$data              = RedsysLiteAPI::sanitize_merchant_parameters( wp_unslash( $_POST['Ds_MerchantParameters'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-			$remote_sign       = sanitize_text_field( wp_unslash( $_POST['Ds_Signature'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
-			$mi_obj            = new RedsysLiteAPI();
-			$decodec           = $mi_obj->decode_merchant_parameters( $data );
-			$order_id          = $mi_obj->get_parameter( 'Ds_Order' );
-			$ds_merchant_code  = $mi_obj->get_parameter( 'Ds_MerchantCode' );
-			$secretsha256      = get_transient( 'redsys_signature_' . sanitize_text_field( $order_id ) );
-			$order1            = $order_id;
-			$order2            = WCRedL()->clean_order_number( $order1 );
-			$secretsha256_meta = WCRedL()->get_order_meta( $order2, '_redsys_secretsha256', true );
+			// No SHA256 secret configured: fail closed. Authenticity must rest
+			// solely on the HMAC signature, never on the non-secret Ds_MerchantCode (FUC) —
+			// it is sent in plaintext in every outgoing payment form and is not a secret.
 			if ( 'yes' === $this->debug ) {
-				$this->log->add( 'googlepayredirecredsys', 'HTTP Notification received: ' . print_r( $_POST, true ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.PHP.DevelopmentFunctions.error_log_print_r
+				$this->log->add( 'googlepayredirecredsys', 'HTTP Notification rejected: no SHA256 secret configured, cannot verify signature.' );
 			}
-			if ( $ds_merchant_code === $this->customer ) {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( 'googlepayredirecredsys', 'Received valid notification from Servired/RedSys' );
-				}
-				return true;
-			} else {
-				if ( 'yes' === $this->debug ) {
-					$this->log->add( 'googlepayredirecredsys', 'Received INVALID notification from Servired/RedSys' );
-					$this->log->add( 'googlepayredirecredsys', '$remote_sign: ' . $remote_sign );
-					$this->log->add( 'googlepayredirecredsys', '$ds_merchant_code: ' . $ds_merchant_code );
-				}
-				return false;
-			}
+			return false;
 		}
 	}
 
@@ -928,6 +959,42 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 		} else {
 			wp_die( 'There is nothing to see here, do not access this page directly (Google Pay redirection)' );
 		}
+	}
+	/**
+	 * Tell whether a return or notification carries a signature made with this gateway's secret.
+	 *
+	 * Verifies and nothing else: no order is changed and nothing waits. The
+	 * order-received fallback asks this before it spends its five-second wait
+	 * on a request (redsyslite_mark_order_as_paid()). successful_request()
+	 * verifies through it, so there is one verification to keep right.
+	 *
+	 * @since 7.1.0
+	 * @param array $params Ds_MerchantParameters and Ds_Signature, as received.
+	 * @return bool
+	 */
+	public function is_valid_return( $params ) {
+		if ( ! is_array( $params ) || empty( $params['Ds_MerchantParameters'] ) || empty( $params['Ds_Signature'] ) ) {
+			return false;
+		}
+		if ( 'yes' === $this->testmode ) {
+			$usesecretsha256 = ! empty( $this->customtestsha256 ) ? $this->customtestsha256 : $this->secretsha256;
+		} else {
+			$usesecretsha256 = $this->secretsha256;
+		}
+		// Fail closed: without a secret there is nothing to verify against.
+		if ( empty( $usesecretsha256 ) ) {
+			return false;
+		}
+		$data        = RedsysLiteAPI::sanitize_merchant_parameters( wp_unslash( $params['Ds_MerchantParameters'] ) );
+		$remote_sign = sanitize_text_field( wp_unslash( $params['Ds_Signature'] ) );
+		$mi_obj      = new RedsysLiteAPI();
+		// The secret that signed it can be the order's own (per-user test mode): same resolution as successful_request().
+		$mi_obj->decode_merchant_parameters( $data );
+		$usesecretsha256 = $this->resolve_notification_secret( $mi_obj );
+		if ( empty( $usesecretsha256 ) ) {
+			return false;
+		}
+		return hash_equals( $mi_obj->create_merchant_signature_notif( $usesecretsha256, $data ), $remote_sign );
 	}
 	/**
 	 * Successful Payment.
@@ -965,23 +1032,26 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 		}
 
 		$mi_obj            = new RedsysLiteAPI();
-		$usesecretsha256   = $this->secretsha256;
 		$dscardnumbercompl = '';
 		$dsexpiration      = '';
 		$dsmerchantidenti  = '';
 		$dscardnumber4     = '';
 		$dsexpiryyear      = '';
 		$dsexpirymonth     = '';
-		$decodedata        = $mi_obj->decode_merchant_parameters( $data );
-		$localsecret       = $mi_obj->create_merchant_signature_notif( $usesecretsha256, $data );
 
-		// Verify cryptographic signature to prevent payment forgery.
-		if ( $localsecret !== $remote_sign ) {
+		// Verify the signature to prevent payment forgery, through the one
+		// verification every caller shares: it fails closed without a SHA256
+		// secret for this mode, and resolves the secret the way
+		// check_ipn_request_is_valid() does, so test mode and any per-order
+		// override are both honored (see resolve_notification_secret()).
+		if ( ! $this->is_valid_return( $params ) ) {
 			if ( 'yes' === $this->debug ) {
-				$this->log->add( 'googlepayredirecredsys', 'Signature verification failed in successful_request. Local: ' . $localsecret . ' Remote: ' . $remote_sign );
+				$this->log->add( 'googlepayredirecredsys', 'Payment rejected in successful_request: signature verification failed or no SHA256 secret configured.' );
 			}
 			return;
 		}
+
+		$decodedata = $mi_obj->decode_merchant_parameters( $data );
 
 		$total             = $mi_obj->get_parameter( 'Ds_Amount' );
 		$ordermi           = $mi_obj->get_parameter( 'Ds_Order' );
@@ -989,8 +1059,8 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 		$currency_code     = $mi_obj->get_parameter( 'Ds_Currency' );
 		$response          = $mi_obj->get_parameter( 'Ds_Response' );
 		$id_trans          = $mi_obj->get_parameter( 'Ds_AuthorisationCode' );
-		$dsdate            = htmlspecialchars_decode( $mi_obj->get_parameter( 'Ds_Date' ) );
-		$dshour            = htmlspecialchars_decode( $mi_obj->get_parameter( 'Ds_Hour' ) );
+		$dsdate            = htmlspecialchars_decode( (string) $mi_obj->get_parameter( 'Ds_Date' ) );
+		$dshour            = htmlspecialchars_decode( (string) $mi_obj->get_parameter( 'Ds_Hour' ) );
 		$dstermnal         = $mi_obj->get_parameter( 'Ds_Terminal' );
 		$dsmerchandata     = $mi_obj->get_parameter( 'Ds_MerchantData' );
 		$dssucurepayment   = $mi_obj->get_parameter( 'Ds_SecurePayment' );
@@ -1010,10 +1080,10 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 		$order             = WCRedL()->get_order( (int) $order2 );
 
 		if ( 'yes' === $this->debug ) {
-			$this->log->add( 'googlepayredirecredsys', 'SHA256 Settings: ' . $usesecretsha256 );
-			$this->log->add( 'googlepayredirecredsys', 'SHA256 Transcient: ' . $secretsha256 );
+			// Presence only: the signing secret itself never goes to the log.
+			$this->log->add( 'googlepayredirecredsys', 'SHA256 Settings: set' );
+			$this->log->add( 'googlepayredirecredsys', 'SHA256 Transcient: ' . ( $secretsha256 ? 'set' : 'empty' ) );
 			$this->log->add( 'googlepayredirecredsys', 'decode_merchant_parameters: ' . $decodedata );
-			$this->log->add( 'googlepayredirecredsys', 'create_merchant_signature_notif: ' . $localsecret );
 			$this->log->add( 'googlepayredirecredsys', 'Ds_Amount: ' . $total );
 			$this->log->add( 'googlepayredirecredsys', 'Ds_Order: ' . $ordermi );
 			$this->log->add( 'googlepayredirecredsys', 'Ds_MerchantCode: ' . $dscode );
@@ -1042,7 +1112,7 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 				if ( 'yes' === $this->debug ) {
 					$this->log->add( 'googlepayredirecredsys', 'Response 900 (refund)' );
 				}
-				set_transient( $order->get_id() . '_redsys_refund', 'yes' );
+				$this->set_refund_confirmed( $order->get_id() );
 
 				if ( 'yes' === $this->debug ) {
 					$this->log->add( 'googlepayredirecredsys', 'WCRedL()->update_order_meta to "refund yes"' );
@@ -1056,6 +1126,12 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 			}
 			$order->add_order_note( __( 'There was an error refunding', 'woo-redsys-gateway-light' ) );
 			exit;
+		}
+
+		// A repeated notification for an order that is already paid changes
+		// nothing, as in the card and Bizum gateways.
+		if ( WCRedL()->is_paid( $order->get_id() ) ) {
+			return;
 		}
 
 		$response = intval( $response );
@@ -1159,7 +1235,7 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 			if ( ! empty( $secretsha256 ) ) {
 				$data['_redsys_secretsha256'] = $secretsha256;
 				if ( 'yes' === $this->debug ) {
-					$this->log->add( 'googlepayredirecredsys', '_redsys_secretsha256 saved: ' . $secretsha256 );
+					$this->log->add( 'googlepayredirecredsys', '_redsys_secretsha256 saved' );
 				}
 			} elseif ( 'yes' === $this->debug ) {
 				$this->log->add( 'googlepayredirecredsys', ' ' );
@@ -1287,11 +1363,11 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 			$secretsha256 = $secretsha256_meta;
 			if ( 'yes' === $this->debug ) {
 				$this->log->add( 'googlepayredirecredsys', __( 'Using meta for SHA256', 'woo-redsys-gateway-light' ) );
-				$this->log->add( 'googlepayredirecredsys', __( 'The SHA256 Meta is: ', 'woo-redsys-gateway-light' ) . $secretsha256 );
+				$this->log->add( 'googlepayredirecredsys', __( 'The SHA256 Meta is: ', 'woo-redsys-gateway-light' ) . ( $secretsha256 ? 'set' : 'empty' ) );
 			}
 		} elseif ( 'yes' === $this->debug ) {
 			$this->log->add( 'googlepayredirecredsys', __( 'Using settings for SHA256', 'woo-redsys-gateway-light' ) );
-			$this->log->add( 'googlepayredirecredsys', __( 'The SHA256 settings is: ', 'woo-redsys-gateway-light' ) . $secretsha256 );
+			$this->log->add( 'googlepayredirecredsys', __( 'The SHA256 settings is: ', 'woo-redsys-gateway-light' ) . ( $secretsha256 ? 'set' : 'empty' ) );
 		}
 		if ( 'yes' === $this->not_use_https ) {
 			$final_notify_url = $this->notify_url_not_https;
@@ -1320,7 +1396,7 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 			$this->log->add( 'googlepayredirecredsys', __( 'Authorization Date : ', 'woo-redsys-gateway-light' ) . $autorization_date );
 			$this->log->add( 'googlepayredirecredsys', __( 'Currency Codey : ', 'woo-redsys-gateway-light' ) . $currencycode );
 			$this->log->add( 'googlepayredirecredsys', __( 'Terminal : ', 'woo-redsys-gateway-light' ) . $terminal );
-			$this->log->add( 'googlepayredirecredsys', __( 'SHA256 : ', 'woo-redsys-gateway-light' ) . $secretsha256_meta );
+			$this->log->add( 'googlepayredirecredsys', __( 'SHA256 : ', 'woo-redsys-gateway-light' ) . ( $secretsha256_meta ? 'set' : 'empty' ) );
 			$this->log->add( 'googlepayredirecredsys', __( 'FUC : ', 'woo-redsys-gateway-light' ) . $order_fuc );
 		}
 
@@ -1339,7 +1415,7 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 		$mi_obj->set_parameter( 'DS_MERCHANT_TERMINAL', $terminal );
 		$mi_obj->set_parameter( 'DS_MERCHANT_MERCHANTURL', $final_notify_url );
 		$mi_obj->set_parameter( 'DS_MERCHANT_URLOK', add_query_arg( 'utm_nooverride', '1', $this->get_return_url( $order ) ) );
-		$mi_obj->set_parameter( 'DS_MERCHANT_URLKO', $order->get_cancel_order_url() );
+		$mi_obj->set_parameter( 'DS_MERCHANT_URLKO', WCRedL()->get_cancel_url_raw( $order ) );
 		$mi_obj->set_parameter( 'DS_MERCHANT_CONSUMERLANGUAGE', '001' );
 		$mi_obj->set_parameter( 'DS_MERCHANT_PRODUCTDESCRIPTION', WCRedL()->clean_data( __( 'Order', 'woo-redsys-gateway-light' ) . ' ' . $order->get_order_number() ) );
 		$mi_obj->set_parameter( 'DS_MERCHANT_MERCHANTNAME', $this->commercename );
@@ -1358,7 +1434,7 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 			$this->log->add( 'googlepayredirecredsys', __( 'DS_MERCHANT_TERMINAL : ', 'woo-redsys-gateway-light' ) . $terminal );
 			$this->log->add( 'googlepayredirecredsys', __( 'DS_MERCHANT_MERCHANTURL : ', 'woo-redsys-gateway-light' ) . $final_notify_url );
 			$this->log->add( 'googlepayredirecredsys', __( 'DS_MERCHANT_URLOK : ', 'woo-redsys-gateway-light' ) . add_query_arg( 'utm_nooverride', '1', $this->get_return_url( $order ) ) );
-			$this->log->add( 'googlepayredirecredsys', __( 'DS_MERCHANT_URLKO : ', 'woo-redsys-gateway-light' ) . $order->get_cancel_order_url() );
+			$this->log->add( 'googlepayredirecredsys', __( 'DS_MERCHANT_URLKO : ', 'woo-redsys-gateway-light' ) . WCRedL()->get_cancel_url_raw( $order ) );
 			$this->log->add( 'googlepayredirecredsys', __( 'DS_MERCHANT_CONSUMERLANGUAGE : 001', 'woo-redsys-gateway-light' ) );
 			$this->log->add( 'googlepayredirecredsys', __( 'DS_MERCHANT_PRODUCTDESCRIPTION : ', 'woo-redsys-gateway-light' ) . WCRedL()->clean_data( __( 'Order', 'woo-redsys-gateway-light' ) . ' ' . $order->get_order_number() ) );
 			$this->log->add( 'googlepayredirecredsys', __( 'DS_MERCHANT_MERCHANTNAME : ', 'woo-redsys-gateway-light' ) . $this->commercename );
@@ -1393,11 +1469,26 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 				$this->log->add( 'googlepayredirecredsys', __( 'There is an error', 'woo-redsys-gateway-light' ) );
 				$this->log->add( 'googlepayredirecredsys', '*********************************' );
 				$this->log->add( 'googlepayredirecredsys', ' ' );
-				$this->log->add( 'googlepayredirecredsys', __( 'The error is : ', 'woo-redsys-gateway-light' ) . $post_arg );
+				$this->log->add( 'googlepayredirecredsys', __( 'The error is : ', 'woo-redsys-gateway-light' ) . $post_arg->get_error_message() );
 			}
 			return $post_arg;
 		}
 		return true;
+	}
+	/**
+	 * Record that Redsys confirmed a refund of this order.
+	 *
+	 * Called by the notification handler. process_refund() is waiting for it
+	 * and uses it once. It expires on its own: a confirmation nobody was
+	 * waiting for (it came late, or the refund was made in the Redsys back
+	 * office) must not be there to answer for a later refund.
+	 *
+	 * @since 7.1.0
+	 * @param int $order_id Order ID.
+	 * @return void
+	 */
+	public function set_refund_confirmed( $order_id ) {
+		set_transient( $order_id . '_redsys_refund', 'yes', 10 * MINUTE_IN_SECONDS );
 	}
 	/**
 	 * Check if the ping is from Redsys
@@ -1436,6 +1527,12 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 		set_time_limit( 0 );
 		$order = wc_get_order( $order_id );
 
+		// An explicit amount of zero is not "no amount given": refunding the
+		// whole order for it would move money nobody asked to move.
+		if ( null !== $amount && '' !== $amount && round( (float) $amount, 2 ) <= 0 ) {
+			return new WP_Error( 'error', __( 'The refund amount must be greater than zero.', 'woo-redsys-gateway-light' ) );
+		}
+
 		$transaction_id = WCRedL()->get_order_meta( $order_id, '_payment_order_number_redsys', true );
 		if ( 'yes' === $this->debug ) {
 			$this->log->add( 'googlepayredirecredsys', __( '$order_id#: ', 'woo-redsys-gateway-light' ) . $transaction_id );
@@ -1451,6 +1548,16 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 				$this->log->add( 'googlepayredirecredsys', __( 'check_redsys_refund Asking for order #: ', 'woo-redsys-gateway-light' ) . $order_id );
 			}
 
+			// Re-save the Ds_Order -> order_id mapping now, with a 24h TTL: the
+			// mapping created by prepare_order_number() at payment time (1h TTL)
+			// is long gone by the time a refund is requested, and the real
+			// order_id is known for certain right here.
+			set_transient( 'redys_order_temp_' . $transaction_id, $order_id, DAY_IN_SECONDS );
+
+			// A confirmation left over from an earlier refund of this order must not
+			// answer for this one: only what arrives from here on counts.
+			delete_transient( $order_id . '_redsys_refund' );
+
 			$refund_asked = $this->ask_for_refund( $order_id, $transaction_id, $order_total_sign );
 
 			if ( is_wp_error( $refund_asked ) ) {
@@ -1459,12 +1566,21 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 				}
 				return new WP_Error( 'error', $refund_asked->get_error_message() );
 			}
-			$x = 0;
+			/**
+			 * Filters how many more times, five seconds apart, the gateway looks for
+			 * Redsys's confirmation of a refund after the first look.
+			 *
+			 * @since 7.1.0
+			 * @param int $attempts Further looks after the first. Default 20 (about 105 seconds in all).
+			 * @param int $order_id Order being refunded.
+			 */
+			$attempts = (int) apply_filters( 'woocommerce_' . $this->id . '_refund_confirmation_attempts', 20, $order_id );
+			$x        = 0;
 			do {
 				sleep( 5 );
 				$result = $this->check_redsys_refund( $order_id );
 				++$x;
-			} while ( $x <= 20 && false === $result );
+			} while ( $x <= $attempts && false === $result );
 			if ( 'yes' === $this->debug && $result ) {
 				$this->log->add( 'googlepayredirecredsys', __( 'check_redsys_refund = true ', 'woo-redsys-gateway-light' ) . $result );
 				$this->log->add( 'googlepayredirecredsys', ' ' );
@@ -1500,7 +1616,7 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 				return false;
 			}
 		} else {
-			if ( 'yes' === $this->debug && $result ) {
+			if ( 'yes' === $this->debug ) {
 				$this->log->add( 'googlepayredirecredsys', __( 'Refund Failed: No transaction ID', 'woo-redsys-gateway-light' ) );
 				$this->log->add( 'googlepayredirecredsys', ' ' );
 				$this->log->add( 'googlepayredirecredsys', '/******************************************/' );
@@ -1543,7 +1659,15 @@ class WC_Gateway_GooglePay_Redirection_Redsys extends WC_Payment_Gateway {
 		if ( 'yes' !== $test_mode ) {
 			return true;
 		}
-		if ( '' !== $selections[0] || empty( $selections ) ) {
+		// The settings screen has no field for this list, so on most stores it
+		// does not exist: no usable entry means "show to everyone".
+		$selections = array_filter(
+			$selections,
+			function ( $selection ) {
+				return is_scalar( $selection ) && '' !== (string) $selection;
+			}
+		);
+		if ( ! empty( $selections ) ) {
 			if ( ! $userid ) {
 				return false;
 			}

@@ -49,7 +49,7 @@ final class WC_Gateway_Inespay_Lite_Support extends AbstractPaymentMethodType {
 			return false;
 		}
 
-		$allowed  = array( 'ES', 'PT', 'IT' );
+		$allowed  = WC_Gateway_Inespay_Redsys::allowed_countries();
 		$customer = WC()->customer;
 		$billing  = $customer ? $customer->get_billing_country() : '';
 		$shipping = $customer ? $customer->get_shipping_country() : '';
@@ -69,8 +69,8 @@ final class WC_Gateway_Inespay_Lite_Support extends AbstractPaymentMethodType {
 	 * @return array
 	 */
 	public function get_payment_method_script_handles() {
-		$script_path       = '/assets/js/frontend/blocks.js';
-		$script_asset_path = plugin_abspath_redsys() . 'assets/js/frontend/blocks.asset.php';
+		$script_path       = '/assets/js/frontend/blocks' . redsyslite_asset_suffix() . '.js';
+		$script_asset_path = plugin_abspath_redsys() . 'assets/js/frontend/blocks' . redsyslite_asset_suffix() . '.asset.php';
 		$script_asset      = file_exists( $script_asset_path )
 			? require $script_asset_path
 			: array(
@@ -102,14 +102,27 @@ final class WC_Gateway_Inespay_Lite_Support extends AbstractPaymentMethodType {
 	public function get_payment_method_data() {
 		$logo_url = WCRedL()->get_redsys_option( 'logo', 'inespayredsys' );
 		if ( ! empty( $logo_url ) ) {
+			/**
+			 * Filters the checkout icon URL of Inespay.
+			 *
+			 * @param string $icon_url URL of the icon: the logo set in the settings, or the bundled one.
+			 */
 			$icon = apply_filters( 'woocommerce_inespayredsys_icon', $logo_url );
 		} else {
+			/**
+			 * Filters the checkout icon URL of Inespay.
+			 *
+			 * @param string $icon_url URL of the icon: the logo set in the settings, or the bundled one.
+			 */
 			$icon = apply_filters( 'woocommerce_inespayredsys_icon', REDSYS_PLUGIN_URL . 'assets/images/inespay.svg' );
 		}
 		return array(
 			'title'       => WCRedL()->get_redsys_option( 'title', 'inespayredsys' ),
 			'description' => WCRedL()->get_redsys_option( 'description', 'inespayredsys' ),
-			'icon'        => $icon,
+			'icon'        => esc_url_raw( $icon ),
+			// The script offers Inespay only while the address being typed is in
+			// one of these countries, as the classic checkout does (S-066).
+			'countries'   => WC_Gateway_Inespay_Redsys::allowed_countries(),
 			'supports'    => array(
 				'products',
 				'refunds',
